@@ -7,27 +7,12 @@
 
 import Foundation
 
-enum MethodType {
-    case get
-    case post
-    case delete
-    case put
-    case patch
-    
-    var stringValue: String {
-        switch self {
-        case .get:
-            return "GET"
-        case .post:
-            return "POST"
-        case .delete:
-            return "DELETE"
-        case .put:
-            return "PUT"
-        case .patch:
-            return "PATCH"
-        }
-    }
+enum MethodType: String {
+    case get = "GET"
+    case post = "POST"
+    case delete = "DELETE"
+    case put = "PUT"
+    case patch = "PATCH"
 }
 
 protocol RequestProtocol {
@@ -38,4 +23,6 @@ protocol RequestProtocol {
     var parameters: [String: Any]? { get }
     var headers: [String: String]? { get }
     var body: Data? { get }
+    
+    func buildURLRequest() -> URLRequest
 }

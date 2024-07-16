@@ -29,4 +29,26 @@ public struct BaseRequest<Response: Decodable>: RequestProtocol {
         self.headers = headers
         self.body = body
     }
+    
+    func buildURLRequest() -> URLRequest {
+        var urlRequest = URLRequest(url: self.url)
+        
+        if let parameters = self.parameters {
+            let queryItems = parameters.map { key, value in
+                URLQueryItem(name: key, value: "\(value)")
+            }
+            var urlComponents = URLComponents(url: self.url, resolvingAgainstBaseURL: false)
+            urlComponents?.queryItems = queryItems
+            urlRequest.url = urlComponents?.url
+        }
+        
+        urlRequest.httpMethod = self.method.rawValue
+        urlRequest.allHTTPHeaderFields = self.headers
+        
+        if let body = self.body {
+            urlRequest.httpBody = body
+        }
+        
+        return urlRequest
+    }
 }

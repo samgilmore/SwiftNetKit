@@ -13,23 +13,7 @@ public struct NetworkService: NetworkServiceProtocol {
     
     func start<Request: RequestProtocol>(_ request: Request) async throws -> Request.ResponseType {
         do {
-            var urlRequest = URLRequest(url: request.url)
-            
-            if let parameters = request.parameters {
-                let queryItems = parameters.map { key, value in
-                    URLQueryItem(name: key, value: "\(value)")
-                }
-                var urlComponents = URLComponents(url: request.url, resolvingAgainstBaseURL: false)
-                urlComponents?.queryItems = queryItems
-                urlRequest.url = urlComponents?.url
-            }
-            
-            urlRequest.httpMethod = request.method.stringValue
-            urlRequest.allHTTPHeaderFields = request.headers
-            
-            if let body = request.body {
-                urlRequest.httpBody = body
-            }
+            let urlRequest = request.buildURLRequest()
             
             let (data, response) = try await URLSession.shared.data(for: urlRequest)
             
@@ -53,23 +37,7 @@ public struct NetworkService: NetworkServiceProtocol {
     }
     
     func start<Request: RequestProtocol>(_ request: Request, completion: @escaping (Result<Request.ResponseType, Error>) -> Void) {
-        var urlRequest = URLRequest(url: request.url)
-        
-        if let parameters = request.parameters {
-            let queryItems = parameters.map { key, value in
-                URLQueryItem(name: key, value: "\(value)")
-            }
-            var urlComponents = URLComponents(url: request.url, resolvingAgainstBaseURL: false)
-            urlComponents?.queryItems = queryItems
-            urlRequest.url = urlComponents?.url
-        }
-        
-        urlRequest.httpMethod = request.method.stringValue
-        urlRequest.allHTTPHeaderFields = request.headers
-        
-        if let body = request.body {
-            urlRequest.httpBody = body
-        }
+        let urlRequest = request.buildURLRequest()
         
         URLSession.shared.dataTask(with: urlRequest) { data, response, error in
             if let error = error {
