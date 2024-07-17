@@ -7,14 +7,6 @@
 
 import Foundation
 
-enum MethodType: String {
-    case get = "GET"
-    case post = "POST"
-    case delete = "DELETE"
-    case put = "PUT"
-    case patch = "PATCH"
-}
-
 protocol RequestProtocol {
     associatedtype ResponseType: Decodable
     

@@ -9,10 +9,17 @@ import Foundation
 
 public struct NetworkService: NetworkServiceProtocol {
     
-    public let session: URLSession
+    internal let session: URLSession
     
-    public init(session: URLSession = .shared) {
-        self.session = session
+    public init(configuration: SessionConfiguration = .default) {
+        switch configuration {
+        case .default:
+            self.session = URLSession(configuration: .default)
+        case .ephemeral:
+            self.session = URLSession(configuration: .ephemeral)
+        case .background(let identifier):
+            self.session = URLSession(configuration: .background(withIdentifier: identifier))
+        }
     }
     
     func start<Request: RequestProtocol>(_ request: Request) async throws -> Request.ResponseType {
