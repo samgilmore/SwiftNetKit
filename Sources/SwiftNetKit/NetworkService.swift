@@ -9,13 +9,17 @@ import Foundation
 
 public struct NetworkService: NetworkServiceProtocol {
     
-    public init() {}
+    public let session: URLSession
+    
+    public init(session: URLSession = .shared) {
+        self.session = session
+    }
     
     func start<Request: RequestProtocol>(_ request: Request) async throws -> Request.ResponseType {
         do {
             let urlRequest = request.buildURLRequest()
             
-            let (data, response) = try await URLSession.shared.data(for: urlRequest)
+            let (data, response) = try await session.data(for: urlRequest)
             
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw NetworkError.invalidResponse
@@ -39,7 +43,7 @@ public struct NetworkService: NetworkServiceProtocol {
     func start<Request: RequestProtocol>(_ request: Request, completion: @escaping (Result<Request.ResponseType, Error>) -> Void) {
         let urlRequest = request.buildURLRequest()
         
-        URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+        session.dataTask(with: urlRequest) { data, response, error in
             if let error = error {
                 completion(.failure(NetworkError.requestFailed(error: error)))
                 return
