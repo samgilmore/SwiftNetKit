@@ -14,7 +14,7 @@ protocol RequestProtocol {
     var method: MethodType { get }
     var parameters: [String: Any]? { get }
     var headers: [String: String]? { get }
-    var body: Data? { get }
+    var body: RequestBody? { get }
     
     func buildURLRequest() -> URLRequest
 }

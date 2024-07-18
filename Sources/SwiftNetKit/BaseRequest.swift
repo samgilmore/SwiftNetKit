@@ -14,14 +14,14 @@ public struct BaseRequest<Response: Decodable>: RequestProtocol {
     let method: MethodType
     let parameters: [String : Any]?
     let headers: [String : String]?
-    let body: Data?
+    let body: RequestBody?
     
     init(
         url: URL,
         method: MethodType,
         parameters: [String : Any]? = nil,
         headers: [String : String]? = nil,
-        body: Data? = nil
+        body: RequestBody? = nil
     ) {
         self.url = url
         self.method = method
@@ -46,7 +46,19 @@ public struct BaseRequest<Response: Decodable>: RequestProtocol {
         urlRequest.allHTTPHeaderFields = self.headers
         
         if let body = self.body {
-            urlRequest.httpBody = body
+            switch body {
+            case .data(let data):
+                urlRequest.httpBody = data
+            case .string(let string):
+                urlRequest.httpBody = string.data(using: .utf8)
+            case .jsonEncodable(let encodable):
+                let jsonData = try? JSONEncoder().encode(encodable)
+                urlRequest.httpBody = jsonData
+                
+                if headers?["Content-Type"] == nil {
+                    urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                }
+            }
         }
         
         return urlRequest
