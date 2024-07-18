@@ -4,6 +4,7 @@ import XCTest
 final class NetworkServiceTests: XCTestCase {
     var networkService: NetworkService!
     let getURL = URL(string: "https://jsonplaceholder.typicode.com/posts/1")!
+    let postURL = URL(string: "https://jsonplaceholder.typicode.com/posts")!
     
     override func setUp() {
         super.setUp()
@@ -50,6 +51,60 @@ final class NetworkServiceTests: XCTestCase {
             case .success(let post):
                 XCTAssertEqual(post.userId, 1)
                 XCTAssertEqual(post.id, 1)
+                
+                expectation.fulfill()
+            case .failure(let error):
+                XCTFail("Failed with error: \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 5.0)
+    }
+    
+    func testPostSuccessWithBodyAsyncAwait() {
+        let expectation = XCTestExpectation(description: "Post data successfully")
+        
+        let newPost = Post(userId: 1, id: 101, title: "Foo", body: "Bar")
+        let baseRequest = BaseRequest<Post>(
+            url: self.postURL,
+            method: .post,
+            headers: ["Content-Type": "application/json"],
+            body: .jsonEncodable(newPost)
+        )
+        
+        Task {
+            do {
+                let createdPost: Post = try await self.networkService.start(baseRequest)
+                XCTAssertEqual(createdPost.userId, newPost.userId)
+                XCTAssertEqual(createdPost.title, newPost.title)
+                XCTAssertEqual(createdPost.body, newPost.body)
+                
+                expectation.fulfill()
+            } catch {
+                XCTFail("Failed with error: \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 5.0)
+    }
+    
+    func testPostSuccessWithBodyClosure() {
+        let expectation = XCTestExpectation(description: "Post data successfully")
+        
+        let newPost = Post(userId: 1, id: 101, title: "Foo", body: "Bar")
+        let baseRequest = BaseRequest<Post>(
+            url: self.postURL,
+            method: .post,
+            headers: ["Content-Type": "application/json"],
+            body: .jsonEncodable(newPost)
+        )
+        
+        networkService.start(baseRequest) { result in
+            switch result {
+            case .success(let createdPost):
+                XCTAssertEqual(createdPost.userId, newPost.userId)
+                XCTAssertEqual(createdPost.title, newPost.title)
+                XCTAssertEqual(createdPost.body, newPost.body)
                 
                 expectation.fulfill()
             case .failure(let error):
