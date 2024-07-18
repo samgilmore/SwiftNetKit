@@ -54,6 +54,10 @@ public struct BaseRequest<Response: Decodable>: RequestProtocol {
             case .jsonEncodable(let encodable):
                 let jsonData = try? JSONEncoder().encode(encodable)
                 urlRequest.httpBody = jsonData
+                
+                if headers?["Content-Type"] == nil {
+                    urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                }
             }
         }
         
