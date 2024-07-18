@@ -15,13 +15,49 @@ final class NetworkServiceTests: XCTestCase {
         super.tearDown()
     }
     
-    func testGetSuccess() async throws {
-        do {
-            let post: Post = try await networkService.get(from: getURL, decodeTo: Post.self)
-            XCTAssertEqual(post.id, 1)
-        } catch {
-            XCTFail("Should succeed, but failed with error: \(error)")
+    func testGetSuccessAsyncAwait() {
+        let expectation = XCTestExpectation(description: "Fetch data successfully")
+        
+        Task {
+            do {
+                let baseRequest = BaseRequest<Post>(
+                    url: self.getURL,
+                    method: .get
+                )
+                let post: Post = try await self.networkService.start(baseRequest)
+                XCTAssertEqual(post.userId, 1)
+                XCTAssertEqual(post.id, 1)
+                
+                expectation.fulfill()
+            } catch {
+                XCTFail("Failed with error: \(error)")
+            }
         }
+        
+        wait(for: [expectation], timeout: 5.0)
+    }
+    
+    func testGetSuccessClosure() {
+        let expectation = XCTestExpectation(description: "Fetch data successfully")
+        
+        let baseRequest = BaseRequest<Post>(
+            url: self.getURL,
+            method: .get
+        )
+        
+        networkService.start(baseRequest) { result in
+            switch result {
+            case .success(let post):
+                XCTAssertEqual(post.userId, 1)
+                XCTAssertEqual(post.id, 1)
+                
+                expectation.fulfill()
+            case .failure(let error):
+                XCTFail("Failed with error: \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 5.0)
     }
 }
 
