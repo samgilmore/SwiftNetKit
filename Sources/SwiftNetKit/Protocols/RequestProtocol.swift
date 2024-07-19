@@ -15,6 +15,7 @@ protocol RequestProtocol {
     var parameters: [String: Any]? { get }
     var headers: [String: String]? { get }
     var body: RequestBody? { get }
+    var cacheConfiguration: CacheConfiguration? { get }
     
     func buildURLRequest() -> URLRequest
 }
@@ -22,6 +23,8 @@ protocol RequestProtocol {
 extension RequestProtocol {
     func buildURLRequest() -> URLRequest {
         var urlRequest = URLRequest(url: self.url)
+        
+        urlRequest.cachePolicy = self.cacheConfiguration?.cachePolicy ?? .useProtocolCachePolicy
         
         if let parameters = self.parameters {
             let queryItems = parameters.map { key, value in

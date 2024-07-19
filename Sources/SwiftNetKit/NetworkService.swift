@@ -22,6 +22,7 @@ public struct NetworkService: NetworkServiceProtocol {
             sessionConfiguration = URLSessionConfiguration.background(withIdentifier: identifier)
         }
         
+        // Default: 60.0s
         if let timeoutInterval = timeoutInterval {
             sessionConfiguration.timeoutIntervalForRequest = timeoutInterval
             sessionConfiguration.timeoutIntervalForResource = timeoutInterval
@@ -30,18 +31,41 @@ public struct NetworkService: NetworkServiceProtocol {
         self.session = URLSession(configuration: sessionConfiguration)
     }
     
+    private func configureCache(for urlRequest: inout URLRequest, using request: any RequestProtocol) {
+        if let cacheConfig = request.cacheConfiguration {
+            let cache = URLCache(
+                memoryCapacity: cacheConfig.memoryCapacity,
+                diskCapacity: cacheConfig.diskCapacity,
+                diskPath: cacheConfig.diskPath
+            )
+            
+            // Configure the URLSession's URLCache with the specified memory and disk capacity
+            self.session.configuration.urlCache = cache
+            
+            // Set the cache policy for the individual URLRequest, determining how the URLRequest uses the URLCache
+            urlRequest.cachePolicy = cacheConfig.cachePolicy
+        } else {
+            // If no custom cache configuration is provided for this request,
+            // then reset the session's URLCache to the system-wide default cache.
+            // This ensures that subsequent requests use the default caching behavior
+            // provided by URLCache.shared.
+            self.session.configuration.urlCache = URLCache.shared
+        }
+    }
+    
     func start<Request: RequestProtocol>(
         _ request: Request,
         retries: Int = 0,
         retryInterval: TimeInterval = 1.0
     ) async throws -> Request.ResponseType {
+        var urlRequest = request.buildURLRequest()
+        self.configureCache(for: &urlRequest, using: request)
+        
         var currentAttempt = 0
         var lastError: Error?
         
         while currentAttempt <= retries {
             do {
-                let urlRequest = request.buildURLRequest()
-                
                 let (data, response) = try await session.data(for: urlRequest)
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
@@ -76,12 +100,13 @@ public struct NetworkService: NetworkServiceProtocol {
         retryInterval: TimeInterval = 1.0,
         completion: @escaping (Result<Request.ResponseType, Error>) -> Void
     ) {
+        var urlRequest = request.buildURLRequest()
+        self.configureCache(for: &urlRequest, using: request)
+
         var currentAttempt = 0
         
         func attempt() {
-            let urlRequest = request.buildURLRequest()
-            
-            session.dataTask(with: urlRequest) { data, response, error in
+            self.session.dataTask(with: urlRequest) { data, response, error in
                 if let error = error {
                     if currentAttempt < retries {
                         currentAttempt += 1

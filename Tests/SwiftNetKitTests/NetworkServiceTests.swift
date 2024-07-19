@@ -114,6 +114,45 @@ final class NetworkServiceTests: XCTestCase {
         
         wait(for: [expectation], timeout: 5.0)
     }
+    
+    func testCachingBehavior() {
+        // Disclaimer: This test doesn't necessarily prove that the request was cached
+        
+        let expectation = XCTestExpectation(description: "Fetch data and cache it")
+        let cacheConfiguration = CacheConfiguration(
+            memoryCapacity: 10_000_000,
+            diskCapacity: 100_000_000,
+            cachePolicy: .returnCacheDataElseLoad
+        )
+        
+        let firstRequest = BaseRequest<Post>(
+            url: self.getURL,
+            method: .get,
+            cacheConfiguration: cacheConfiguration
+        )
+        
+        Task {
+            do {
+                let post: Post = try await self.networkService.start(firstRequest)
+                XCTAssertEqual(post.userId, 1)
+                XCTAssertEqual(post.id, 1)
+                
+                try await Task.sleep(nanoseconds: 1_000_000_000)
+                
+                let secondRequest = firstRequest
+                let cachedPost: Post = try await self.networkService.start(secondRequest)
+                
+                XCTAssertEqual(post.userId, cachedPost.userId)
+                XCTAssertEqual(post.id, cachedPost.id)
+                
+                expectation.fulfill()
+            } catch {
+                XCTFail("Failed with error: \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
 }
 
 // 'Post' for testing jsonplaceholder.typicode.com data
