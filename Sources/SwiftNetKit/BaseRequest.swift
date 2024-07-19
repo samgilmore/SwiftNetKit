@@ -15,18 +15,21 @@ public struct BaseRequest<Response: Decodable>: RequestProtocol {
     let parameters: [String : Any]?
     let headers: [String : String]?
     let body: RequestBody?
+    let cacheConfiguration: CacheConfiguration?
     
     init(
         url: URL,
         method: MethodType,
         parameters: [String : Any]? = nil,
         headers: [String : String]? = nil,
-        body: RequestBody? = nil
+        body: RequestBody? = nil,
+        cacheConfiguration: CacheConfiguration? = nil
     ) {
         self.url = url
         self.method = method
         self.parameters = parameters
         self.headers = headers
         self.body = body
+        self.cacheConfiguration = cacheConfiguration
     }
 }
