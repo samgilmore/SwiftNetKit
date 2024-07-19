@@ -10,4 +10,5 @@ public enum NetworkError: Error {
     case decodingFailed
     case serverError(statusCode: Int)
     case requestFailed(error: Error)
+    case unknown
 }
