@@ -153,6 +153,99 @@ final class NetworkServiceTests: XCTestCase {
         
         wait(for: [expectation], timeout: 10.0)
     }
+    
+    func testIncludeCookiesInRequest() {
+        // Disclaimer: This test doesn't necessarily prove included cookies in request
+        
+        let expectation = XCTestExpectation(description: "Include cookies in request")
+        
+        let testCookie = createTestCookie(name: "testCookie", value: "cookieValue", domain: "jsonplaceholder.typicode.com")
+        networkService.saveCookiesToSession([testCookie], for: getURL)
+        
+        let baseRequest = BaseRequest<Post>(
+            url: self.getURL,
+            method: .get,
+            includeCookies: true
+        )
+        
+        Task {
+            do {
+                let _: Post = try await self.networkService.start(baseRequest)
+                
+                expectation.fulfill()
+            } catch {
+                XCTFail("Failed with error: \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 5.0)
+    }
+    
+    func testSaveCookiesFromResponse() {
+        let expectation = XCTestExpectation(description: "Save cookies from response")
+        
+        let baseRequest = BaseRequest<Post>(
+            url: self.getURL,
+            method: .get,
+            saveCookiesToSession: true
+        )
+        
+        Task {
+            do {
+                let _: Post = try await self.networkService.start(baseRequest)
+                
+                // Verifying cookies are saved to the session
+                let cookies = networkService.getAllCookies()
+                XCTAssertTrue(cookies.contains(where: { $0.name == "testCookie" }))
+                
+                expectation.fulfill()
+            } catch {
+                XCTFail("Failed with error: \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 5.0)
+    }
+    
+    func testLoadCookiesFromUserDefaultsAndUseInRequest() {
+        // Disclaimer: This test doesn't necessarily prove included cookies in request
+        
+        let expectation = XCTestExpectation(description: "Load cookies from UserDefaults and use in request")
+        
+        let testCookie = createTestCookie(name: "testCookie", value: "cookieValue", domain: "jsonplaceholder.typicode.com")
+        networkService.saveCookiesToUserDefaults([testCookie])
+        networkService.resetCookies() // Clear cookies from session
+        networkService.loadCookiesFromUserDefaults()
+        
+        let baseRequest = BaseRequest<Post>(
+            url: self.getURL,
+            method: .get,
+            includeCookies: true
+        )
+        
+        Task {
+            do {
+                let _: Post = try await self.networkService.start(baseRequest)
+                
+                expectation.fulfill()
+            } catch {
+                XCTFail("Failed with error: \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 5.0)
+    }
+    
+    private func createTestCookie(name: String, value: String, domain: String) -> HTTPCookie {
+        return HTTPCookie(properties: [
+            .domain: domain,
+            .path: "/",
+            .name: name,
+            .value: value,
+            .secure: "FALSE",
+            .expires: NSDate(timeIntervalSinceNow: 3600)
+        ])!
+    }
 }
 
 // 'Post' for testing jsonplaceholder.typicode.com data

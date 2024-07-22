@@ -16,6 +16,9 @@ protocol RequestProtocol {
     var headers: [String: String]? { get }
     var body: RequestBody? { get }
     var cacheConfiguration: CacheConfiguration? { get }
+    var includeCookies: Bool { get }
+    var saveCookiesToSession: Bool { get }
+    var saveCookiesToUserDefaults: Bool { get }
     
     func buildURLRequest() -> URLRequest
 }

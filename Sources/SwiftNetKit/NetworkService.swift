@@ -31,7 +31,7 @@ public struct NetworkService: NetworkServiceProtocol {
         self.session = URLSession(configuration: sessionConfiguration)
     }
     
-    private func configureCache(for urlRequest: inout URLRequest, using request: any RequestProtocol) {
+    private func configureCache(for urlRequest: inout URLRequest, with request: any RequestProtocol) {
         if let cacheConfig = request.cacheConfiguration {
             let cache = URLCache(
                 memoryCapacity: cacheConfig.memoryCapacity,
@@ -53,13 +53,43 @@ public struct NetworkService: NetworkServiceProtocol {
         }
     }
     
+    private func includeCookiesIfNeeded(for urlRequest: inout URLRequest, with request: any RequestProtocol) {
+        if request.includeCookies {
+            loadCookiesFromUserDefaults()
+            
+            let cookies = getCookiesForURL(for: urlRequest.url!)
+            let cookieHeader = HTTPCookie.requestHeaderFields(with: cookies)
+            
+            urlRequest.allHTTPHeaderFields = urlRequest.allHTTPHeaderFields?.merging(cookieHeader) { (_, new) in new } ?? cookieHeader
+        }
+    }
+    
+    private func saveCookiesIfNeeded(from response: URLResponse?, request: any RequestProtocol) {
+        guard let httpResponse = response as? HTTPURLResponse,
+              let url = httpResponse.url,
+              let headers = httpResponse.allHeaderFields as? [String: String] else { return }
+        
+        let cookies = HTTPCookie.cookies(withResponseHeaderFields: headers, for: url)
+        
+        if request.saveCookiesToSession {
+            saveCookiesToSession(cookies, for: url)
+        }
+        
+        if request.saveCookiesToUserDefaults {
+            saveCookiesToUserDefaults(cookies)
+        }
+    }
+    
     func start<Request: RequestProtocol>(
         _ request: Request,
         retries: Int = 0,
         retryInterval: TimeInterval = 1.0
     ) async throws -> Request.ResponseType {
         var urlRequest = request.buildURLRequest()
-        self.configureCache(for: &urlRequest, using: request)
+        
+        self.includeCookiesIfNeeded(for: &urlRequest, with: request)
+        
+        self.configureCache(for: &urlRequest, with: request)
         
         var currentAttempt = 0
         var lastError: Error?
@@ -67,6 +97,8 @@ public struct NetworkService: NetworkServiceProtocol {
         while currentAttempt <= retries {
             do {
                 let (data, response) = try await session.data(for: urlRequest)
+                
+                self.saveCookiesIfNeeded(from: response, request: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
                     throw NetworkError.invalidResponse
@@ -101,8 +133,11 @@ public struct NetworkService: NetworkServiceProtocol {
         completion: @escaping (Result<Request.ResponseType, Error>) -> Void
     ) {
         var urlRequest = request.buildURLRequest()
-        self.configureCache(for: &urlRequest, using: request)
-
+        
+        self.includeCookiesIfNeeded(for: &urlRequest, with: request)
+        
+        self.configureCache(for: &urlRequest, with: request)
+        
         var currentAttempt = 0
         
         func attempt() {
@@ -118,6 +153,8 @@ public struct NetworkService: NetworkServiceProtocol {
                     }
                     return
                 }
+                
+                self.saveCookiesIfNeeded(from: response, request: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
                     completion(.failure(NetworkError.invalidResponse))
