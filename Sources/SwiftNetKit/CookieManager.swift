@@ -7,7 +7,7 @@
 
 import Foundation
 
-class CookieManager {
+public class CookieManager {
     static let shared = CookieManager()
     
     private static let userDefaultsKey = "SWIFTNETKIT_SAVED_COOKIES"
@@ -26,7 +26,14 @@ class CookieManager {
             let cookies = CookieManager.shared.getCookiesForURL(for: urlRequest.url!)
             let cookieHeader = HTTPCookie.requestHeaderFields(with: cookies)
             
-            urlRequest.allHTTPHeaderFields = urlRequest.allHTTPHeaderFields?.merging(cookieHeader) { (_, new) in new } ?? cookieHeader
+            if let existingCookieHeader = urlRequest.allHTTPHeaderFields?[HTTPCookie.requestHeaderFields(with: []).keys.first ?? ""] {
+                let mergedCookies = (existingCookieHeader + "; " + (cookieHeader.values.first ?? "")).trimmingCharacters(in: .whitespacesAndNewlines)
+                urlRequest.allHTTPHeaderFields?[HTTPCookie.requestHeaderFields(with: []).keys.first ?? ""] = mergedCookies
+            } else {
+                urlRequest.allHTTPHeaderFields = urlRequest.allHTTPHeaderFields?.merging(cookieHeader) { (existing, new) in
+                    return existing + "; " + new
+                } ?? cookieHeader
+            }
         }
     }
     
@@ -39,7 +46,7 @@ class CookieManager {
         
         let cookies = HTTPCookie.cookies(withResponseHeaderFields: setCookieHeaders as! [String: String], for: url)
         
-        saveCookiesToSession(cookies, for: url)
+        saveCookiesToSession(cookies)
         
         if syncCookiesWithUserDefaults {
             saveCookiesToUserDefaults(cookies)
@@ -64,7 +71,7 @@ class CookieManager {
         return HTTPCookieStorage.shared.cookies ?? []
     }
     
-    func saveCookiesToSession(_ cookies: [HTTPCookie], for url: URL) {
+    func saveCookiesToSession(_ cookies: [HTTPCookie]) {
         for cookie in cookies {
             HTTPCookieStorage.shared.setCookie(cookie)
         }

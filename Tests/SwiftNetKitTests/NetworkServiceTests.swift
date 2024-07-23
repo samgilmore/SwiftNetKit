@@ -177,20 +177,33 @@ final class NetworkServiceTests: XCTestCase {
     func testIncludeCookiesInRequest() {
         let expectation = XCTestExpectation(description: "Include cookies in request")
         
-        let testCookie = createTestCookie(name: "testCookie", value: "cookieValue", domain: "jsonplaceholder.typicode.com")
-        let testCookie2 = createTestCookie(name: "testCookie2", value: "cookieValue2", domain: "jsonplaceholder.typicode.com")
-        
-        CookieManager.shared.saveCookiesToSession([testCookie, testCookie2], for: getURL)
-        
         let baseRequest = Request<Post>(
             url: self.getURL,
             method: .get,
             includeCookies: true
         )
         
+        let testCookie = createTestCookie(name: "testCookie", value: "cookieValue", domain: "jsonplaceholder.typicode.com")
+        let testCookie2 = createTestCookie(name: "testCookie2", value: "cookieValue2", domain: "jsonplaceholder.typicode.com")
+        
+        baseRequest.addTempCookie(name: "temp1", value: "temp1val")
+        
+        CookieManager.shared.saveCookiesToSession([testCookie, testCookie2])
+        
+        baseRequest.addTempCookie(name: "temp2", value: "temp2val")
+        
+        let newRequest = Request<Post>(
+            url: self.getURL,
+            method: .get,
+            includeCookies: true
+        )
+        
+        newRequest.addTempCookie(name: "newtemp", value: "new")
+        
         Task {
             do {
                 let _: Post = try await self.networkService.start(baseRequest)
+                let _: Post = try await self.networkService.start(newRequest)
                 expectation.fulfill()
             } catch {
                 XCTFail("Failed with error: \(error)")
@@ -230,7 +243,7 @@ final class NetworkServiceTests: XCTestCase {
         let testCookie = createTestCookie(name: "testCookieSession", value: "cookieValueSession", domain: "jsonplaceholder.typicode.com")
         let testCookieUD = createTestCookie(name: "testCookieUD", value: "cookieValueUD", domain: "jsonplaceholder.typicode.com")
         
-        CookieManager.shared.saveCookiesToSession([testCookie], for: getURL)
+        CookieManager.shared.saveCookiesToSession([testCookie])
         CookieManager.shared.saveCookiesToUserDefaults([testCookieUD])
         
         let baseRequest = Request<Post>(

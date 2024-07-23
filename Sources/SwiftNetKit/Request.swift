@@ -10,8 +10,8 @@ import Foundation
 public class Request<Response: Codable>: RequestProtocol {
     let url: URL
     let method: MethodType
-    let parameters: [String : Any]?
-    let headers: [String : String]?
+    var parameters: [String : Any]?
+    var headers: [String : String]?
     let body: RequestBody?
     let cacheConfiguration: CacheConfiguration?
     let includeCookies: Bool
@@ -73,7 +73,26 @@ public class Request<Response: Codable>: RequestProtocol {
         return urlRequest
     }
     
-    final func setCookies(_ cookies: [HTTPCookie]) {
+    final func addTempCookie(name: String, value: String) {
+        let cookie = HTTPCookie(properties: [
+            .domain: url.host ?? "",
+            .path: "/",
+            .name: name,
+            .value: value
+        ])!
         
+        let cookieHeader = HTTPCookie.requestHeaderFields(with: [cookie])
+        
+        if self.headers == nil {
+            self.headers = [:]
+        }
+        
+        for (headerField, headerValue) in cookieHeader {
+            if let existingValue = self.headers?[headerField] {
+                self.headers?[headerField] = existingValue + "; " + headerValue
+            } else {
+                self.headers?[headerField] = headerValue
+            }
+        }
     }
 }

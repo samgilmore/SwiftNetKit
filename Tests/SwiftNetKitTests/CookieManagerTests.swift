@@ -35,7 +35,7 @@ class CookieManagerTests: XCTestCase {
     }
     
     func testSaveAndLoadCookiesFromUserDefaults() {
-        let testCookie = createTestCookie(name: "testCookie", value: "cookieValue", domain: testURL.host!)
+        let testCookie = createTestCookie(name: "testCookie", value: "cookieValue", domain: testURL.host ?? "")
         
         CookieManager.shared.saveCookiesToUserDefaults([testCookie])
         CookieManager.shared.loadCookiesFromUserDefaults()
@@ -50,10 +50,10 @@ class CookieManagerTests: XCTestCase {
     func testIncludeCookiesInRequest() {
         let expectation = XCTestExpectation(description: "Include cookies in request")
         
-        let testCookie = createTestCookie(name: "testCookie", value: "cookieValue", domain: testURL.host!)
-        let testCookie2 = createTestCookie(name: "testCookie2", value: "cookieValue2", domain: testURL.host!)
+        let testCookie = createTestCookie(name: "testCookie", value: "cookieValue", domain: testURL.host ?? "")
+        let testCookie2 = createTestCookie(name: "testCookie2", value: "cookieValue2", domain: testURL.host ?? "")
         
-        CookieManager.shared.saveCookiesToSession([testCookie, testCookie2], for: testURL)
+        CookieManager.shared.saveCookiesToSession([testCookie, testCookie2])
         
         var urlRequest = URLRequest(url: testURL)
         CookieManager.shared.includeCookiesIfNeeded(for: &urlRequest, includeCookies: true)
@@ -70,7 +70,7 @@ class CookieManagerTests: XCTestCase {
     }
     
     func testSyncCookies() {
-        let testCookie = createTestCookie(name: "testCookie", value: "cookieValue", domain: testURL.host!)
+        let testCookie = createTestCookie(name: "testCookie", value: "cookieValue", domain: testURL.host ?? "")
         
         CookieManager.shared.saveCookiesToUserDefaults([testCookie])
         CookieManager.shared.syncCookies()
@@ -84,7 +84,7 @@ class CookieManagerTests: XCTestCase {
     
     func testDeleteExpiredCookies() {
         let expiredCookie = HTTPCookie(properties: [
-            .domain: testURL.host!,
+            .domain: testURL.host ?? "",
             .path: "/",
             .name: "expiredCookie",
             .value: "expiredValue",
@@ -101,14 +101,14 @@ class CookieManagerTests: XCTestCase {
     
     func testCleanExpiredCookies() {
         let expiredCookie = HTTPCookie(properties: [
-            .domain: testURL.host!,
+            .domain: testURL.host ?? "",
             .path: "/",
             .name: "expiredCookie",
             .value: "expiredValue",
             .expires: Date().addingTimeInterval(-3600)
         ])!
         
-        let validCookie = createTestCookie(name: "validCookie", value: "validValue", domain: testURL.host!)
+        let validCookie = createTestCookie(name: "validCookie", value: "validValue", domain: testURL.host ?? "")
         
         CookieManager.shared.saveCookiesToUserDefaults([expiredCookie, validCookie])
         CookieManager.shared.cleanExpiredCookies()
