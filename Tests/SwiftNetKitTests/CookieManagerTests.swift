@@ -11,17 +11,16 @@ import XCTest
 class CookieManagerTests: XCTestCase {
     
     let testURL = URL(string: "https://jsonplaceholder.typicode.com")!
-    let userDefaultsKey = "savedCookies"
     
     override func setUp() {
         super.setUp()
+        CookieManager.shared.syncCookiesWithUserDefaults = true
         CookieManager.shared.deleteAllCookies()
-        UserDefaults.standard.removeObject(forKey: userDefaultsKey)
     }
     
     override func tearDown() {
+        CookieManager.shared.syncCookiesWithUserDefaults = true
         CookieManager.shared.deleteAllCookies()
-        UserDefaults.standard.removeObject(forKey: userDefaultsKey)
         super.tearDown()
     }
     

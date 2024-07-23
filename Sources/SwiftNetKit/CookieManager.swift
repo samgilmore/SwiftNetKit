@@ -10,7 +10,9 @@ import Foundation
 class CookieManager {
     static let shared = CookieManager()
     
-    let userDefaultsKey = "savedCookies"
+    private static let userDefaultsKey = "SWIFTNETKIT_SAVED_COOKIES"
+    private let userDefaults = UserDefaults(suiteName: "SWIFTNETKIT_COOKIE_SUITE")
+    
     var syncCookiesWithUserDefaults: Bool = true
     
     private init() {
@@ -75,11 +77,11 @@ class CookieManager {
                 cookieDataArray.append(data)
             }
         }
-        UserDefaults.standard.set(cookieDataArray, forKey: userDefaultsKey)
+        userDefaults?.set(cookieDataArray, forKey: CookieManager.userDefaultsKey)
     }
     
     func loadCookiesFromUserDefaults() {
-        guard let cookieDataArray = UserDefaults.standard.array(forKey: userDefaultsKey) as? [Data] else { return }
+        guard let cookieDataArray = userDefaults?.array(forKey: CookieManager.userDefaultsKey) as? [Data] else { return }
         
         let allowedClasses: [AnyClass] = [NSDictionary.self, NSString.self, NSDate.self, NSNumber.self, NSURL.self]
         
@@ -94,12 +96,12 @@ class CookieManager {
     func deleteAllCookies() {
         HTTPCookieStorage.shared.cookies?.forEach(HTTPCookieStorage.shared.deleteCookie)
         if syncCookiesWithUserDefaults {
-            UserDefaults.standard.removeObject(forKey: userDefaultsKey)
+            userDefaults?.removeObject(forKey: CookieManager.userDefaultsKey)
         }
     }
     
     func deleteExpiredCookies() {
-        guard let cookieDataArray = UserDefaults.standard.array(forKey: userDefaultsKey) as? [Data] else { return }
+        guard let cookieDataArray = userDefaults?.array(forKey: CookieManager.userDefaultsKey) as? [Data] else { return }
         var validCookieDataArray: [Data] = []
         
         let allowedClasses: [AnyClass] = [NSDictionary.self, NSString.self, NSDate.self, NSNumber.self, NSURL.self]
@@ -112,7 +114,7 @@ class CookieManager {
             }
         }
         
-        UserDefaults.standard.set(validCookieDataArray, forKey: userDefaultsKey)
+        userDefaults?.set(validCookieDataArray, forKey: CookieManager.userDefaultsKey)
     }
     
     func cleanExpiredCookies() {

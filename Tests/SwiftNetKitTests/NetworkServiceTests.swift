@@ -20,8 +20,8 @@ final class NetworkServiceTests: XCTestCase {
     }
     
     func clearAllCookies() {
-        HTTPCookieStorage.shared.cookies?.forEach(HTTPCookieStorage.shared.deleteCookie)
-        UserDefaults.standard.removeObject(forKey: CookieManager.shared.userDefaultsKey)
+        CookieManager.shared.syncCookiesWithUserDefaults = true
+        CookieManager.shared.deleteAllCookies()
     }
     
     
@@ -41,7 +41,7 @@ final class NetworkServiceTests: XCTestCase {
         
         Task {
             do {
-                let baseRequest = BaseRequest<Post>(
+                let baseRequest = Request<Post>(
                     url: self.getURL,
                     method: .get
                 )
@@ -61,7 +61,7 @@ final class NetworkServiceTests: XCTestCase {
     func testGetSuccessClosure() {
         let expectation = XCTestExpectation(description: "Fetch data successfully")
         
-        let baseRequest = BaseRequest<Post>(
+        let baseRequest = Request<Post>(
             url: self.getURL,
             method: .get
         )
@@ -85,7 +85,7 @@ final class NetworkServiceTests: XCTestCase {
         let expectation = XCTestExpectation(description: "Post data successfully")
         
         let newPost = Post(userId: 1, id: 101, title: "Foo", body: "Bar")
-        let baseRequest = BaseRequest<Post>(
+        let baseRequest = Request<Post>(
             url: self.postURL,
             method: .post,
             headers: ["Content-Type": "application/json"],
@@ -112,7 +112,7 @@ final class NetworkServiceTests: XCTestCase {
         let expectation = XCTestExpectation(description: "Post data successfully")
         
         let newPost = Post(userId: 1, id: 101, title: "Foo", body: "Bar")
-        let baseRequest = BaseRequest<Post>(
+        let baseRequest = Request<Post>(
             url: self.postURL,
             method: .post,
             headers: ["Content-Type": "application/json"],
@@ -145,7 +145,7 @@ final class NetworkServiceTests: XCTestCase {
             cachePolicy: .returnCacheDataElseLoad
         )
         
-        let firstRequest = BaseRequest<Post>(
+        let firstRequest = Request<Post>(
             url: self.getURL,
             method: .get,
             cacheConfiguration: cacheConfiguration
@@ -182,7 +182,7 @@ final class NetworkServiceTests: XCTestCase {
         
         CookieManager.shared.saveCookiesToSession([testCookie, testCookie2], for: getURL)
         
-        let baseRequest = BaseRequest<Post>(
+        let baseRequest = Request<Post>(
             url: self.getURL,
             method: .get,
             includeCookies: true
@@ -206,7 +206,7 @@ final class NetworkServiceTests: XCTestCase {
         let testCookie = createTestCookie(name: "testCookieUD", value: "cookieValueUD", domain: "jsonplaceholder.typicode.com")
         CookieManager.shared.saveCookiesToUserDefaults([testCookie])
         
-        let baseRequest = BaseRequest<Post>(
+        let baseRequest = Request<Post>(
             url: self.getURL,
             method: .get,
             includeCookies: true
@@ -233,7 +233,7 @@ final class NetworkServiceTests: XCTestCase {
         CookieManager.shared.saveCookiesToSession([testCookie], for: getURL)
         CookieManager.shared.saveCookiesToUserDefaults([testCookieUD])
         
-        let baseRequest = BaseRequest<Post>(
+        let baseRequest = Request<Post>(
             url: self.getURL,
             method: .get,
             includeCookies: true
