@@ -17,8 +17,7 @@ public struct BaseRequest<Response: Decodable>: RequestProtocol {
     let body: RequestBody?
     let cacheConfiguration: CacheConfiguration?
     let includeCookies: Bool
-    let saveCookiesToSession: Bool
-    let saveCookiesToUserDefaults: Bool
+    let saveResponseCookies: Bool
     
     init(
         url: URL,
@@ -28,8 +27,7 @@ public struct BaseRequest<Response: Decodable>: RequestProtocol {
         body: RequestBody? = nil,
         cacheConfiguration: CacheConfiguration? = nil,
         includeCookies: Bool = true,
-        saveCookiesToSession: Bool = true,
-        saveCookiestoUserDefaults: Bool = false
+        saveResponseCookies: Bool = true
     ) {
         self.url = url
         self.method = method
@@ -38,7 +36,6 @@ public struct BaseRequest<Response: Decodable>: RequestProtocol {
         self.body = body
         self.cacheConfiguration = cacheConfiguration
         self.includeCookies = includeCookies
-        self.saveCookiesToSession = saveCookiesToSession
-        self.saveCookiesToUserDefaults = saveCookiestoUserDefaults
+        self.saveResponseCookies = saveResponseCookies
     }
 }

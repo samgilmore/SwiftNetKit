@@ -28,6 +28,10 @@ public struct NetworkService: NetworkServiceProtocol {
             sessionConfiguration.timeoutIntervalForResource = timeoutInterval
         }
         
+        // Handle cookie management manually
+        sessionConfiguration.httpShouldSetCookies = false
+        sessionConfiguration.httpCookieAcceptPolicy = .never
+        
         self.session = URLSession(configuration: sessionConfiguration)
     }
     
@@ -53,33 +57,6 @@ public struct NetworkService: NetworkServiceProtocol {
         }
     }
     
-    private func includeCookiesIfNeeded(for urlRequest: inout URLRequest, with request: any RequestProtocol) {
-        if request.includeCookies {
-            loadCookiesFromUserDefaults()
-            
-            let cookies = getCookiesForURL(for: urlRequest.url!)
-            let cookieHeader = HTTPCookie.requestHeaderFields(with: cookies)
-            
-            urlRequest.allHTTPHeaderFields = urlRequest.allHTTPHeaderFields?.merging(cookieHeader) { (_, new) in new } ?? cookieHeader
-        }
-    }
-    
-    private func saveCookiesIfNeeded(from response: URLResponse?, request: any RequestProtocol) {
-        guard let httpResponse = response as? HTTPURLResponse,
-              let url = httpResponse.url,
-              let headers = httpResponse.allHeaderFields as? [String: String] else { return }
-        
-        let cookies = HTTPCookie.cookies(withResponseHeaderFields: headers, for: url)
-        
-        if request.saveCookiesToSession {
-            saveCookiesToSession(cookies, for: url)
-        }
-        
-        if request.saveCookiesToUserDefaults {
-            saveCookiesToUserDefaults(cookies)
-        }
-    }
-    
     func start<Request: RequestProtocol>(
         _ request: Request,
         retries: Int = 0,
@@ -87,7 +64,7 @@ public struct NetworkService: NetworkServiceProtocol {
     ) async throws -> Request.ResponseType {
         var urlRequest = request.buildURLRequest()
         
-        self.includeCookiesIfNeeded(for: &urlRequest, with: request)
+        CookieManager.shared.includeCookiesIfNeeded(for: &urlRequest, includeCookies: request.includeCookies)
         
         self.configureCache(for: &urlRequest, with: request)
         
@@ -98,7 +75,7 @@ public struct NetworkService: NetworkServiceProtocol {
             do {
                 let (data, response) = try await session.data(for: urlRequest)
                 
-                self.saveCookiesIfNeeded(from: response, request: request)
+                CookieManager.shared.saveCookiesIfNeeded(from: response, saveResponseCookies: request.saveResponseCookies)
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
                     throw NetworkError.invalidResponse
@@ -134,7 +111,7 @@ public struct NetworkService: NetworkServiceProtocol {
     ) {
         var urlRequest = request.buildURLRequest()
         
-        self.includeCookiesIfNeeded(for: &urlRequest, with: request)
+        CookieManager.shared.includeCookiesIfNeeded(for: &urlRequest, includeCookies: request.includeCookies)
         
         self.configureCache(for: &urlRequest, with: request)
         
@@ -154,8 +131,8 @@ public struct NetworkService: NetworkServiceProtocol {
                     return
                 }
                 
-                self.saveCookiesIfNeeded(from: response, request: request)
-                
+                CookieManager.shared.saveCookiesIfNeeded(from: response, saveResponseCookies: request.saveResponseCookies)
+
                 guard let httpResponse = response as? HTTPURLResponse else {
                     completion(.failure(NetworkError.invalidResponse))
                     return
