@@ -263,12 +263,221 @@ final class NetworkServiceTests: XCTestCase {
         
         wait(for: [expectation], timeout: 5.0)
     }
+    
+    func testStartBatchSuccessAsyncAwait() {
+        let expectation = XCTestExpectation(description: "Fetch batch data successfully")
+        
+        Task {
+            do {
+                let baseRequest1 = Request<Post>(url: self.getURL, method: .get)
+                let baseRequest2 = Request<Post>(url: self.getURL, method: .get)
+                let requests = [baseRequest1, baseRequest2]
+                
+                let results: [Result<Post, Error>] = try await self.networkService.startBatch(requests)
+                
+                for result in results {
+                    switch result {
+                    case .success(let post):
+                        XCTAssertEqual(post.userId, 1)
+                        XCTAssertEqual(post.id, 1)
+                    case .failure:
+                        XCTFail("One of the requests failed")
+                    }
+                }
+                
+                expectation.fulfill()
+            } catch {
+                XCTFail("Failed with error: \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testStartBatchFailureAsyncAwait() {
+        let expectation = XCTestExpectation(description: "Fetch batch data with some failures")
+        
+        Task {
+            do {
+                let validRequest = Request<Post>(url: self.getURL, method: .get)
+                let invalidRequest = Request<Post>(url: URL(string: "https://jsonplaceholder.typicode.com/invalid")!, method: .get)
+                let requests = [validRequest, invalidRequest]
+                
+                let results: [Result<Post, Error>] = try await self.networkService.startBatch(requests)
+                
+                var successCount = 0
+                var failureCount = 0
+                
+                for result in results {
+                    switch result {
+                    case .success(let post):
+                        XCTAssertEqual(post.userId, 1)
+                        XCTAssertEqual(post.id, 1)
+                        successCount += 1
+                    case .failure:
+                        failureCount += 1
+                    }
+                }
+                
+                XCTAssertEqual(successCount, 1)
+                XCTAssertEqual(failureCount, 1)
+                expectation.fulfill()
+            } catch {
+                XCTFail("Failed with error: \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testStartBatchExitEarlyOnFailureAsyncAwait() {
+        let expectation = XCTestExpectation(description: "Exit early on failure")
+        
+        Task {
+            do {
+                let validRequest = Request<Post>(url: self.getURL, method: .get)
+                let invalidRequest = Request<Post>(url: URL(string: "https://jsonplaceholder.typicode.com/invalid")!, method: .get)
+                let requests = [validRequest, invalidRequest]
+                
+                _ = try await self.networkService.startBatch(requests, exitEarlyOnFailure: true)
+                XCTFail("Expected to throw an error, but succeeded instead")
+            } catch let error as NetworkError {
+                XCTAssertNotNil(error, "Expected a NetworkError but got nil")
+                expectation.fulfill()
+            } catch {
+                XCTFail("Expected a NetworkError but got \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testStartBatchSuccessClosure() {
+        let expectation = XCTestExpectation(description: "Fetch batch data successfully")
+        
+        let baseRequest1 = Request<Post>(url: self.getURL, method: .get)
+        let baseRequest2 = Request<Post>(url: self.getURL, method: .get)
+        let requests = [baseRequest1, baseRequest2]
+        
+        networkService.startBatch(requests) { result in
+            switch result {
+            case .success(let results):
+                for result in results {
+                    switch result {
+                    case .success(let post):
+                        XCTAssertEqual(post.userId, 1)
+                        XCTAssertEqual(post.id, 1)
+                    case .failure:
+                        XCTFail("One of the requests failed")
+                    }
+                }
+                expectation.fulfill()
+            case .failure(let error):
+                XCTFail("Batch failed with error: \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testStartBatchFailureClosure() {
+        let expectation = XCTestExpectation(description: "Fetch batch data with some failures")
+        
+        let validRequest = Request<Post>(url: self.getURL, method: .get)
+        let invalidRequest = Request<Post>(url: URL(string: "https://jsonplaceholder.typicode.com/invalid")!, method: .get)
+        let requests = [validRequest, invalidRequest]
+        
+        networkService.startBatch(requests) { result in
+            switch result {
+            case .success(let results):
+                var successCount = 0
+                var failureCount = 0
+                
+                for result in results {
+                    switch result {
+                    case .success(let post):
+                        XCTAssertEqual(post.userId, 1)
+                        XCTAssertEqual(post.id, 1)
+                        successCount += 1
+                    case .failure:
+                        failureCount += 1
+                    }
+                }
+                
+                XCTAssertEqual(successCount, 1)
+                XCTAssertEqual(failureCount, 1)
+                expectation.fulfill()
+            case .failure(let error):
+                XCTFail("Batch failed with error: \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testStartBatchExitEarlyOnFailureClosure() {
+        let expectation = XCTestExpectation(description: "Exit early on failure")
+        
+        let validRequest = Request<Post>(url: self.getURL, method: .get)
+        let invalidRequest = Request<Post>(url: URL(string: "https://jsonplaceholder.typicode.com/invalid")!, method: .get)
+        let requests = [validRequest, invalidRequest]
+        
+        networkService.startBatch(requests, exitEarlyOnFailure: true) { result in
+            switch result {
+            case .success:
+                XCTFail("Expected to throw an error, but succeeded instead")
+            case .failure(let error):
+                if let networkError = error as? NetworkError {
+                    XCTAssertNotNil(networkError, "Expected a NetworkError but got nil")
+                } else {
+                    XCTFail("Expected a NetworkError but got \(error)")
+                }
+                expectation.fulfill()
+            }
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testStartBatchWithMultipleTypes() async throws {
+        let postRequest = Request<Post>(
+            url: getURL,
+            method: .get
+        )
+        let postWithoutIdRequest = Request<PostWithoutId>(
+            url: getURL,
+            method: .get
+        )
+        
+        let requests: [any RequestProtocol] = [postRequest, postWithoutIdRequest]
+        
+        let results = try await networkService.startBatchWithMultipleTypes(requests)
+        
+        XCTAssertEqual(results.count, 2)
+        
+        if case .success(let post) = results[0] {
+            XCTAssertTrue(post is Post)
+        } else {
+            XCTFail("Expected success for first request")
+        }
+        
+        if case .success(let postWithoutId) = results[1] {
+            XCTAssertTrue(postWithoutId is PostWithoutId)
+        } else {
+            XCTFail("Expected success for second request")
+        }
+    }
 }
 
 // 'Post' for testing jsonplaceholder.typicode.com data
 struct Post: Codable {
     let userId: Int
     let id: Int
+    let title: String
+    let body: String
+}
+
+struct PostWithoutId: Codable {
     let title: String
     let body: String
 }

@@ -7,7 +7,9 @@
 
 import Foundation
 
-protocol RequestProtocol {    
+protocol RequestProtocol {
+    associatedtype Response: Codable
+    
     var url: URL { get }
     var method: MethodType { get }
     var parameters: [String: Any]? { get }
@@ -16,6 +18,7 @@ protocol RequestProtocol {
     var cacheConfiguration: CacheConfiguration? { get }
     var includeCookies: Bool { get }
     var saveResponseCookies: Bool { get }
+    var responseType: Response.Type { get }
     
     func buildURLRequest() -> URLRequest
 }
