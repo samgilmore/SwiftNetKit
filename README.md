@@ -149,7 +149,7 @@ struct MyRequest: RequestProtocol {
 
 ## License
 
-SwiftNetKit is released under the MIT license. See LICENSE for details.
+SwiftNetKit is released under the MIT license. See [LICENSE](LICENSE) for details.
 
 ## Contributing
 
