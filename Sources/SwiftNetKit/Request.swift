@@ -16,6 +16,7 @@ public class Request<Response: Codable>: RequestProtocol {
     let cacheConfiguration: CacheConfiguration?
     let includeCookies: Bool
     let saveResponseCookies: Bool
+    var responseType: Response.Type { return Response.self }
     
     init(
         url: URL,
