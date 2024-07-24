@@ -28,10 +28,14 @@ public struct NetworkService: NetworkServiceProtocol {
             sessionConfiguration.timeoutIntervalForResource = timeoutInterval
         }
         
+        // Handle cookie management manually
+        sessionConfiguration.httpShouldSetCookies = false
+        sessionConfiguration.httpCookieAcceptPolicy = .never
+        
         self.session = URLSession(configuration: sessionConfiguration)
     }
     
-    private func configureCache(for urlRequest: inout URLRequest, using request: any RequestProtocol) {
+    private func configureCache<T>(for urlRequest: inout URLRequest, with request: Request<T>) {
         if let cacheConfig = request.cacheConfiguration {
             let cache = URLCache(
                 memoryCapacity: cacheConfig.memoryCapacity,
@@ -53,13 +57,16 @@ public struct NetworkService: NetworkServiceProtocol {
         }
     }
     
-    func start<Request: RequestProtocol>(
-        _ request: Request,
+    func start<T>(
+        _ request: Request<T>,
         retries: Int = 0,
         retryInterval: TimeInterval = 1.0
-    ) async throws -> Request.ResponseType {
+    ) async throws -> T {
         var urlRequest = request.buildURLRequest()
-        self.configureCache(for: &urlRequest, using: request)
+        
+        CookieManager.shared.includeCookiesIfNeeded(for: &urlRequest, includeCookies: request.includeCookies)
+        
+        self.configureCache(for: &urlRequest, with: request)
         
         var currentAttempt = 0
         var lastError: Error?
@@ -67,6 +74,8 @@ public struct NetworkService: NetworkServiceProtocol {
         while currentAttempt <= retries {
             do {
                 let (data, response) = try await session.data(for: urlRequest)
+                
+                CookieManager.shared.saveCookiesIfNeeded(from: response, saveResponseCookies: request.saveResponseCookies)
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
                     throw NetworkError.invalidResponse
@@ -77,7 +86,7 @@ public struct NetworkService: NetworkServiceProtocol {
                 }
                 
                 do {
-                    let decodedObject = try JSONDecoder().decode(Request.ResponseType.self, from: data)
+                    let decodedObject = try JSONDecoder().decode(T.self, from: data)
                     return decodedObject
                 } catch {
                     throw NetworkError.decodingFailed
@@ -94,15 +103,18 @@ public struct NetworkService: NetworkServiceProtocol {
         throw NetworkError.requestFailed(error: lastError ?? NetworkError.unknown)
     }
     
-    func start<Request: RequestProtocol>(
-        _ request: Request,
+    func start<T>(
+        _ request: Request<T>,
         retries: Int = 0,
         retryInterval: TimeInterval = 1.0,
-        completion: @escaping (Result<Request.ResponseType, Error>) -> Void
+        completion: @escaping (Result<T, Error>) -> Void
     ) {
         var urlRequest = request.buildURLRequest()
-        self.configureCache(for: &urlRequest, using: request)
-
+        
+        CookieManager.shared.includeCookiesIfNeeded(for: &urlRequest, includeCookies: request.includeCookies)
+        
+        self.configureCache(for: &urlRequest, with: request)
+        
         var currentAttempt = 0
         
         func attempt() {
@@ -119,6 +131,8 @@ public struct NetworkService: NetworkServiceProtocol {
                     return
                 }
                 
+                CookieManager.shared.saveCookiesIfNeeded(from: response, saveResponseCookies: request.saveResponseCookies)
+
                 guard let httpResponse = response as? HTTPURLResponse else {
                     completion(.failure(NetworkError.invalidResponse))
                     return
@@ -131,7 +145,7 @@ public struct NetworkService: NetworkServiceProtocol {
                 
                 if let data = data {
                     do {
-                        let decodedObject = try JSONDecoder().decode(Request.ResponseType.self, from: data)
+                        let decodedObject = try JSONDecoder().decode(T.self, from: data)
                         completion(.success(decodedObject))
                     } catch {
                         completion(.failure(NetworkError.decodingFailed))

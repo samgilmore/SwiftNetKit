@@ -11,16 +11,17 @@ protocol NetworkServiceProtocol {
     var session: URLSession { get }
     
     // Async / Await
-    func start<Request: RequestProtocol>(
-        _ request: Request,
+    func start<T>(
+        _ request: Request<T>,
         retries: Int,
         retryInterval: TimeInterval
-    ) async throws -> Request.ResponseType
+    ) async throws -> T
     
     // Completion Closure
-    func start<Request: RequestProtocol>(
-        _ request: Request, retries: Int,
+    func start<T>(
+        _ request: Request<T>, 
+        retries: Int,
         retryInterval: TimeInterval,
-        completion: @escaping (Result<Request.ResponseType, Error>) -> Void
+        completion: @escaping (Result<T, Error>) -> Void
     )
 }

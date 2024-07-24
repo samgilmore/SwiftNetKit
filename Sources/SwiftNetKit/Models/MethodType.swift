@@ -5,7 +5,7 @@
 //  Created by Sam Gilmore on 7/17/24.
 //
 
-enum MethodType: String {
+public enum MethodType: String {
     case get = "GET"
     case post = "POST"
     case delete = "DELETE"

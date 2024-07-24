@@ -9,11 +9,31 @@ final class NetworkServiceTests: XCTestCase {
     override func setUp() {
         super.setUp()
         networkService = NetworkService()
+        CookieManager.shared.syncCookiesWithUserDefaults = true
+        clearAllCookies()
     }
     
     override func tearDown() {
         networkService = nil
+        clearAllCookies()
         super.tearDown()
+    }
+    
+    func clearAllCookies() {
+        CookieManager.shared.syncCookiesWithUserDefaults = true
+        CookieManager.shared.deleteAllCookies()
+    }
+    
+    
+    private func createTestCookie(name: String, value: String, domain: String) -> HTTPCookie {
+        return HTTPCookie(properties: [
+            .domain: domain,
+            .path: "/",
+            .name: name,
+            .value: value,
+            .secure: "FALSE",
+            .expires: NSDate(timeIntervalSinceNow: 3600)
+        ])!
     }
     
     func testGetSuccessAsyncAwait() {
@@ -21,7 +41,7 @@ final class NetworkServiceTests: XCTestCase {
         
         Task {
             do {
-                let baseRequest = BaseRequest<Post>(
+                let baseRequest = Request<Post>(
                     url: self.getURL,
                     method: .get
                 )
@@ -41,7 +61,7 @@ final class NetworkServiceTests: XCTestCase {
     func testGetSuccessClosure() {
         let expectation = XCTestExpectation(description: "Fetch data successfully")
         
-        let baseRequest = BaseRequest<Post>(
+        let baseRequest = Request<Post>(
             url: self.getURL,
             method: .get
         )
@@ -65,7 +85,7 @@ final class NetworkServiceTests: XCTestCase {
         let expectation = XCTestExpectation(description: "Post data successfully")
         
         let newPost = Post(userId: 1, id: 101, title: "Foo", body: "Bar")
-        let baseRequest = BaseRequest<Post>(
+        let baseRequest = Request<Post>(
             url: self.postURL,
             method: .post,
             headers: ["Content-Type": "application/json"],
@@ -92,7 +112,7 @@ final class NetworkServiceTests: XCTestCase {
         let expectation = XCTestExpectation(description: "Post data successfully")
         
         let newPost = Post(userId: 1, id: 101, title: "Foo", body: "Bar")
-        let baseRequest = BaseRequest<Post>(
+        let baseRequest = Request<Post>(
             url: self.postURL,
             method: .post,
             headers: ["Content-Type": "application/json"],
@@ -125,7 +145,7 @@ final class NetworkServiceTests: XCTestCase {
             cachePolicy: .returnCacheDataElseLoad
         )
         
-        let firstRequest = BaseRequest<Post>(
+        let firstRequest = Request<Post>(
             url: self.getURL,
             method: .get,
             cacheConfiguration: cacheConfiguration
@@ -152,6 +172,96 @@ final class NetworkServiceTests: XCTestCase {
         }
         
         wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testIncludeCookiesInRequest() {
+        let expectation = XCTestExpectation(description: "Include cookies in request")
+        
+        let baseRequest = Request<Post>(
+            url: self.getURL,
+            method: .get,
+            includeCookies: true
+        )
+        
+        let testCookie = createTestCookie(name: "testCookie", value: "cookieValue", domain: "jsonplaceholder.typicode.com")
+        let testCookie2 = createTestCookie(name: "testCookie2", value: "cookieValue2", domain: "jsonplaceholder.typicode.com")
+        
+        baseRequest.addTempCookie(name: "temp1", value: "temp1val")
+        
+        CookieManager.shared.saveCookiesToSession([testCookie, testCookie2])
+        
+        baseRequest.addTempCookie(name: "temp2", value: "temp2val")
+        
+        let newRequest = Request<Post>(
+            url: self.getURL,
+            method: .get,
+            includeCookies: true
+        )
+        
+        newRequest.addTempCookie(name: "newtemp", value: "new")
+        
+        Task {
+            do {
+                let _: Post = try await self.networkService.start(baseRequest)
+                let _: Post = try await self.networkService.start(newRequest)
+                expectation.fulfill()
+            } catch {
+                XCTFail("Failed with error: \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 5.0)
+    }
+    
+    func testIncludeCookiesFromUserDefaultsInRequest() {
+        let expectation = XCTestExpectation(description: "Include cookies from user defaults in request")
+        
+        let testCookie = createTestCookie(name: "testCookieUD", value: "cookieValueUD", domain: "jsonplaceholder.typicode.com")
+        CookieManager.shared.saveCookiesToUserDefaults([testCookie])
+        
+        let baseRequest = Request<Post>(
+            url: self.getURL,
+            method: .get,
+            includeCookies: true
+        )
+        
+        Task {
+            do {
+                let _: Post = try await self.networkService.start(baseRequest)
+                expectation.fulfill()
+            } catch {
+                XCTFail("Failed with error: \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 5.0)
+    }
+    
+    func testIncludeCookiesFromBothSessionAndUserDefaultsInRequest() {
+        let expectation = XCTestExpectation(description: "Include cookies from both session and user defaults in request")
+        
+        let testCookie = createTestCookie(name: "testCookieSession", value: "cookieValueSession", domain: "jsonplaceholder.typicode.com")
+        let testCookieUD = createTestCookie(name: "testCookieUD", value: "cookieValueUD", domain: "jsonplaceholder.typicode.com")
+        
+        CookieManager.shared.saveCookiesToSession([testCookie])
+        CookieManager.shared.saveCookiesToUserDefaults([testCookieUD])
+        
+        let baseRequest = Request<Post>(
+            url: self.getURL,
+            method: .get,
+            includeCookies: true
+        )
+        
+        Task {
+            do {
+                let _: Post = try await self.networkService.start(baseRequest)
+                expectation.fulfill()
+            } catch {
+                XCTFail("Failed with error: \(error)")
+            }
+        }
+        
+        wait(for: [expectation], timeout: 5.0)
     }
 }
 
