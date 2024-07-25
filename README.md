@@ -55,6 +55,19 @@ struct MyRequest: RequestProtocol {
 }
 ```
 
+### Using the Provided Request Class
+
+If you prefer not to create your own struct, you can use the provided `Request` class:
+
+```swift
+let request = Request<MyResponseModel>(
+    url: URL(string: "https://api.example.com/data")!,
+    method: .get,
+    parameters: nil,
+    headers: ["Authorization": "Bearer token"]
+)
+```
+
 ### Making a Network Call
 
 Create an instance of `NetworkService` and use it to start your request.
