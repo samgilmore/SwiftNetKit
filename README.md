@@ -169,7 +169,3 @@ SwiftNetKit is released under the MIT license. See [LICENSE](LICENSE) for detail
 ## Contributing
 
 Feel free to open issues or submit pull requests for any improvements or bug fixes.
-
-## Contact
-
-For any questions or inquiries, please contact Sam Gilmore at [samgilmore02@gmail.com].
